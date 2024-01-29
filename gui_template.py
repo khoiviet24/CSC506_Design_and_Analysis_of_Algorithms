@@ -44,6 +44,9 @@ class TemplateApp(tk.Tk):
         frame = self.frames[cont]
         frame.tkraise()
 
+    def get_frame(self, frame_class):
+        return self.frames[frame_class]
+
 
 class StartPage(tk.Frame):
     def __init__(self, parent, controller):
@@ -63,6 +66,7 @@ class LoginPage(tk.Frame):
 
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        self.controller = controller
         label = ttk.Label(self, text="Login", font=LARGE_FONT)
         label.place(x=400, y=10)
 
