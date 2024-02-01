@@ -58,9 +58,9 @@ class StartPage(tk.Frame):
         label = ttk.Label(self, text="Sort Comparison", font=LARGE_FONT)
         label.place(x=250, y=10)
 
-        self.results_label = ttk.Label(self, text='Sorted Data', font= REGULAR_FONT)
+        self.results_label = ttk.Label(self, text='Results', font=REGULAR_FONT)
         self.results_label.place(x=50, y=100)
-        self.output_label = ttk.Label(self, text='', font= REGULAR_FONT)
+        self.output_label = ttk.Label(self, text='', font=REGULAR_FONT)
         self.output_label.place(x=50, y=130)
 
         def insertion_sort(arr):
