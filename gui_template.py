@@ -51,6 +51,7 @@ class TemplateApp(tk.Tk):
 class StartPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
+        self.controller = controller
 
         label = ttk.Label(self, text="Template", font=LARGE_FONT)
         label.place(x=350, y=10)
@@ -87,7 +88,6 @@ class LoginPage(tk.Frame):
 
 # main
 def main():
-    # print_welcome_menu()
     app = TemplateApp()
     app.mainloop()
 
