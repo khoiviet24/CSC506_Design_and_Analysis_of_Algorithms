@@ -745,8 +745,8 @@ class PartiallyRetroactiveBinarySearchTreePage(tk.Frame):
         self.controller = controller
         self.pr_tree = PartiallyRetroactiveBinarySearchTree()
 
-        label = ttk.Label(self, text="Partially Search Tree", font=LARGE_FONT)
-        label.place(x=350, y=10)
+        label = ttk.Label(self, text="Partially Retroactive Search Tree", font=LARGE_FONT)
+        label.place(x=250, y=10)
 
         def on_entry_click_insert(event):
             if self.insert_entry.get() == "Enter value":
