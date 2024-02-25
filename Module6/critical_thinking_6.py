@@ -261,6 +261,16 @@ class StartPage(tk.Frame):
                 self.delete_entry.insert(0, 'Enter value')
                 self.delete_entry.config(foreground='grey')
 
+        def on_entry_click_insert(event):
+            if self.insert_entry.get() == 'Enter value':
+                self.insert_entry.delete(0, tk.END)
+                self.insert_entry.config(foreground='black')
+
+        def on_focus_out_insert(event):
+            if not self.insert_entry.get():
+                self.insert_entry.insert(0, 'Enter value')
+                self.insert_entry.config(foreground='grey')
+
         label = ttk.Label(self, text="AVL Tree", font=LARGE_FONT)
         label.place(x=350, y=10)
 
@@ -280,9 +290,17 @@ class StartPage(tk.Frame):
         self.delete_entry.insert(0, default_value_text)
         self.delete_entry.bind('<FocusIn>', on_entry_click_delete)
         self.delete_entry.bind('<FocusOut>', on_focus_out_delete)
-        self.delete_entry.place(x=50, y=400)
+        self.delete_entry.place(x=200, y=400)
         self.delete_button = ttk.Button(self, text='Delete', command=lambda: get_delete())
-        self.delete_button.place(x=50, y=430, width=100, height=50)
+        self.delete_button.place(x=200, y=430, width=100, height=50)
+
+        self.insert_entry = ttk.Entry(self, width=15, foreground='grey')
+        self.insert_entry.insert(0, default_value_text)
+        self.insert_entry.bind('<FocusIn>', on_entry_click_insert)
+        self.insert_entry.bind('<FocusOut>', on_focus_out_insert)
+        self.insert_entry.place(x=50, y=400)
+        self.insert_button = ttk.Button(self, text='Insert', command=lambda: get_insert())
+        self.insert_button.place(x=50, y=430, width=100, height=50)
 
         def generate_avl():
             self.avl_text.delete(1.0, tk.END)
@@ -324,6 +342,24 @@ class StartPage(tk.Frame):
             self.delete_entry.delete(0, tk.END)
             self.delete_entry.config(foreground='grey')
             self.delete_entry.insert(0, default_value_text)
+
+        def get_insert():
+            try:
+                num_to_insert = int(self.insert_entry.get())
+            except ValueError:
+                tkinter.messagebox.showinfo("Invalid Insert Value", "Please enter a valid number to insert.")
+                return
+
+            self.array.append(num_to_insert)
+            new_array_to_str = ', '.join([str(elem) for elem in self.array])
+            self.array_text.delete(1.0, tk.END)
+            self.array_text.insert(tk.INSERT, new_array_to_str)
+
+            generate_avl()
+
+            self.insert_entry.delete(0, tk.END)
+            self.insert_entry.config(foreground='grey')
+            self.insert_entry.insert(0, default_value_text)
 
         generate_button = ttk.Button(self, text="Generate AVL", command=lambda: generate_avl())
         generate_button.place(x=50, y=520, width=100, height=50)
