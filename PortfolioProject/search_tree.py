@@ -2,10 +2,16 @@ import tkinter as tk
 import tkinter.messagebox
 from tkinter import ttk
 import tkinter.scrolledtext as st
+import timeit
+import time
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import f_oneway
 
 LARGE_FONT = ("Verdana", 35)
 REGULAR_FONT = ("Verdana", 14)
-_DEBUG = True
+_DEBUG = False
 
 
 class Node:
@@ -222,9 +228,9 @@ class RollbackBST(BinarySearchTree):
         while len(self.modifications) > timestamp+1:
             operation, key = self.modifications.pop()
             if operation == 'insert':
-                self._delete(key)
+                self._delete_recursive(self.root, key)
             elif operation == 'delete':
-                self._insert(key)
+                self._insert_recursives(self.root, key)
 
 
 class SearchTreeApp(tk.Tk):
@@ -246,7 +252,7 @@ class SearchTreeApp(tk.Tk):
         self.frames = {}
 
         for F in (StartPage, FullyRetroactiveBinarySearchTreePage, PartiallyRetroactiveBinarySearchTreePage,
-                  BinarySearchTreePage, RollbackBSTPage):
+                  BinarySearchTreePage, RollbackBSTPage, PerformanceComparisonPage):
             frame = F(container, self)
 
             self.frames[F] = frame
@@ -705,7 +711,7 @@ class PartiallyRetroactiveBinarySearchTreePage(tk.Frame):
                 return
 
             self.text_area.delete(1.0, tk.END)
-            self.pr_tree.insert_timestamp(num_to_insert, ts_to_insert)
+            self.pr_tree.insert_ago(num_to_insert, ts_to_insert)
             mod_text = self.pr_tree.get_modifications()
             self.text_area.insert(tk.INSERT, mod_text)
             self.insert_ago_val_entry.delete(0, tk.END)
@@ -1104,6 +1110,198 @@ class RollbackBSTPage(tk.Frame):
         back_button.place(x=50, y=800, width=100, height=50)
 
 
+class PerformanceComparisonPage(tk.Frame):
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self, parent)
+        self.controller = controller
+        self.num_trials = 100
+        self.num_elements = 500
+        self.keys = [random.randint(1, 1000) for element in range(self.num_elements)]
+
+        label = ttk.Label(self, text="Performance Comparison", font=LARGE_FONT)
+        label.place(x=350, y=10)
+
+        self.rollback_results_label = ttk.Label(self, text='Rollback Results', font=REGULAR_FONT)
+        self.rollback_results_label.place(x=50, y=100)
+        self.rollback_results_text = ttk.Label(self, text='', font=REGULAR_FONT)
+        self.rollback_results_text.place(x=50, y=150)
+
+        self.rollback_stats_label = ttk.Label(self, text='Rollback Statistical Analysis', font=REGULAR_FONT)
+        self.rollback_stats_label.place(x=50, y=250)
+        self.rollback_stats_text = ttk.Label(self, text='', font=REGULAR_FONT)
+        self.rollback_stats_text.place(x=50, y=300)
+
+        self.insert_results_label = ttk.Label(self, text='Insert Results', font=REGULAR_FONT)
+        self.insert_results_label.place(x=50, y=400)
+        self.insert_results_text = ttk.Label(self, text='', font=REGULAR_FONT)
+        self.insert_results_text.place(x=50, y=450)
+
+        self.insert_stats_label = ttk.Label(self, text='Insert Statistical Analysis', font=REGULAR_FONT)
+        self.insert_stats_label.place(x=50, y=550)
+        self.insert_stats_text = ttk.Label(self, text='', font=REGULAR_FONT)
+        self.insert_stats_text.place(x=50, y=600)
+
+        def time_pr_bst_insert():
+            pr_bst_times = []
+            temp_pr_bst = PartiallyRetroactiveBinarySearchTree()
+            for trial in range(self.num_trials):
+                start_time = time.time_ns()
+                for key in self.keys:
+                    temp_pr_bst.insert(key)
+                end_time = time.time_ns()
+
+                pr_bst_times.append(end_time - start_time)
+
+            return pr_bst_times
+
+        def time_fr_bst_insert():
+            fr_bst_times = []
+            temp_fr_bst = FullyRetroactiveBinarySearchTree()
+            for trial in range(self.num_trials):
+                start_time = time.time_ns()
+                for key in self.keys:
+                    temp_fr_bst.insert(key)
+                end_time = time.time_ns()
+
+                fr_bst_times.append(end_time - start_time)
+
+            return fr_bst_times
+
+        def time_rollback_bst_insert():
+            rollback_bst_times = []
+            temp_rollback_bst = RollbackBST()
+            for trial in range(self.num_trials):
+                start_time = time.time_ns()
+                for key in self.keys:
+                    temp_rollback_bst.insert(key)
+                end_time = time.time_ns()
+
+                rollback_bst_times.append(end_time - start_time)
+
+            return rollback_bst_times
+
+        def show_bst_times_insert():
+            pr_bst_times = time_pr_bst_insert()
+            fr_bst_times = time_fr_bst_insert()
+            rollback_bst_times = time_rollback_bst_insert()
+
+            median_bst = np.median(rollback_bst_times) / 10000000
+            median_pr_bst = np.median(pr_bst_times) / 10000000
+            median_fr_bst = np.median(fr_bst_times) / 10000000
+
+            str_result = ('Average FR_BST: ' + str(median_fr_bst) + ' ns\n' + 'Average PR_BST: ' +
+                          str(median_pr_bst) + ' ns\n' + 'Average BST     : ' + str(median_bst) + ' ns')
+            self.insert_results_text.config(text=str_result)
+
+            f_statistic, p_value = f_oneway(rollback_bst_times, pr_bst_times, fr_bst_times)
+            alpha = 0.05
+            stat_res_str = ""
+            if p_value < alpha:
+                stat_res_str += "The p_value is " + str(p_value) + "\n"
+                stat_res_str += "The differences in means are statistically significant (reject null hypothesis)."
+            else:
+                stat_res_str += "The p_value is " + str(p_value) + "\n"
+                stat_res_str += ("The differences in means are not statistically significant "
+                                 "(fail to reject null hypothesis).")
+
+            self.insert_stats_text.config(text=stat_res_str)
+
+            plt.figure(figsize=(8, 6))
+            plt.boxplot([rollback_bst_times, pr_bst_times, fr_bst_times], vert=False, labels=
+            ['Rollback BST', 'Partially Retroactive BST', 'Fully Retroactive BST'])
+            plt.title(f"Time to Create BST ({self.num_elements} elements, {self.num_trials} trials)")
+            plt.xlabel("Time (ns)")
+            plt.ylabel("Data Structure")
+            plt.show()
+
+        def time_bst_rollback():
+            bst_times = []
+            temp_bst = RollbackBST()
+            for trial in range(self.num_trials):
+                start_time = time.time_ns()
+                for key in self.keys:
+                    temp_bst.insert(key)
+
+                temp_bst.rollback(200)
+                end_time = time.time_ns()
+
+                bst_times.append(end_time - start_time)
+
+            return bst_times
+
+        def time_pr_bst_rollback():
+            pr_bst_times = []
+            temp_pr_bst = PartiallyRetroactiveBinarySearchTree()
+            for trial in range(self.num_trials):
+                start_time = time.time_ns()
+                for key in self.keys:
+                    temp_pr_bst.insert(key)
+
+                temp_tree = temp_pr_bst.snapshot(200)
+                end_time = time.time_ns()
+
+                pr_bst_times.append(end_time - start_time)
+
+            return pr_bst_times
+
+        def time_fr_bst_rollback():
+            fr_bst_times = []
+            temp_fr_bst = FullyRetroactiveBinarySearchTree()
+            for trial in range(self.num_trials):
+                start_time = time.time_ns()
+                for key in self.keys:
+                    temp_fr_bst.insert(key)
+
+                temp_tree = temp_fr_bst.snapshot(200)
+                end_time = time.time_ns()
+
+                fr_bst_times.append(end_time - start_time)
+
+            return fr_bst_times
+
+        def show_bst_times_revert():
+            bst_times = time_bst_rollback()
+            pr_bst_times = time_pr_bst_rollback()
+            fr_bst_times = time_fr_bst_rollback()
+
+            median_bst = np.median(bst_times) / 10000000
+            median_pr_bst = np.median(pr_bst_times) / 10000000
+            median_fr_bst = np.median(fr_bst_times) / 10000000
+
+            str_result = ('Average FR_BST: ' + str(median_fr_bst) + ' ns\n' + 'Average PR_BST: ' +
+                          str(median_pr_bst) + ' ns\n' + 'Average BST     : ' + str(median_bst) + ' ns')
+            self.rollback_results_text.config(text=str_result)
+
+            f_statistic, p_value = f_oneway(bst_times, pr_bst_times, fr_bst_times)
+            alpha = 0.05
+            stat_res_str = ""
+            if p_value < alpha:
+                stat_res_str += "The p_value is " + str(p_value) + "\n"
+                stat_res_str += "The differences in means are statistically significant (reject null hypothesis)."
+            else:
+                stat_res_str += "The p_value is " + str(p_value) + "\n"
+                stat_res_str += ("The differences in means are not statistically significant "
+                                "(fail to reject null hypothesis).")
+
+            self.rollback_stats_text.config(text=stat_res_str)
+
+            plt.figure(figsize=(8, 6))
+            plt.boxplot([bst_times, pr_bst_times, fr_bst_times], vert=False, labels=
+            ['Rollback BST', 'Partially Retroactive BST', 'Fully Retroactive BST'])
+            plt.title(f"Time to Create BST ({self.num_elements} elements, {self.num_trials} trials, rollback 200)")
+            plt.xlabel("Time (ns)")
+            plt.ylabel("Data Structure")
+            plt.show()
+
+        show_rollback_button = ttk.Button(self, text="    Rollback \nComparison",
+                                          command=lambda: show_bst_times_revert())
+        show_rollback_button.place(x=50, y=700, width=100, height=50)
+        show_tree_button = ttk.Button(self, text="      Insert \nComparison", command=lambda: show_bst_times_insert())
+        show_tree_button.place(x=50, y=750, width=100, height=50)
+        back_button = ttk.Button(self, text="Back", command=lambda: controller.show_frame(StartPage))
+        back_button.place(x=50, y=800, width=100, height=50)
+
+
 class StartPage(tk.Frame):
     def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
@@ -1113,22 +1311,26 @@ class StartPage(tk.Frame):
 
         fr_button = ttk.Button(self, text="Fully Retroactive",
                                command=lambda: controller.show_frame(FullyRetroactiveBinarySearchTreePage))
-        fr_button.place(x=550, y=250, width=200, height=50)
+        fr_button.place(x=550, y=200, width=200, height=50)
 
         pr_button = ttk.Button(self, text="Partially Retroactive",
                                command=lambda: controller.show_frame(PartiallyRetroactiveBinarySearchTreePage))
-        pr_button.place(x=550, y=350, width=200, height=50)
+        pr_button.place(x=550, y=300, width=200, height=50)
 
         bst_button = ttk.Button(self, text="Binary Search Tree",
                                command=lambda: controller.show_frame(BinarySearchTreePage))
-        bst_button.place(x=550, y=450, width=200, height=50)
+        bst_button.place(x=550, y=400, width=200, height=50)
 
         rbst_button = ttk.Button(self, text="Rollback Binary Search Tree",
                                 command=lambda: controller.show_frame(RollbackBSTPage))
-        rbst_button.place(x=550, y=550, width=200, height=50)
+        rbst_button.place(x=550, y=500, width=200, height=50)
+
+        compare_button = ttk.Button(self, text="Performance Comparison",
+                                 command=lambda: controller.show_frame(PerformanceComparisonPage))
+        compare_button.place(x=550, y=600, width=200, height=50)
 
         quit_button = ttk.Button(self, text="Quit", command=lambda: controller.destroy())
-        quit_button.place(x=550, y=650, width=200, height=50)
+        quit_button.place(x=550, y=700, width=200, height=50)
 
 
 # main
